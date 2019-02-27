@@ -1,0 +1,131 @@
+html {
+	padding: 0;
+	margin: 0;
+	height: 100%;
+	overflow: auto;
+}
+body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+}
+#root {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100vh;
+}
+.App {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+
+	font-family: "Poiret One", sans-serif;
+	color: gray;
+
+}
+.Nav {
+	display: inline-flex;
+	width: 100vw;
+}
+.title {
+	padding: 10px;
+	margin: 30px;
+	margin-left: 140px;
+	color: hsla(0, 0%, 26%, 1);
+}
+.Q {
+	font-family: "Lobster Two", sans-serif;
+	font-size: 108px;
+}
+.izzitude {
+	font-family: "Oswald", sans-serif;
+	font-size: 72px;
+}
+.nav-item {
+	display: inline-table;
+}
+
+.Quizzitude {
+
+}
+.Cardtainer {
+
+	padding: 40px;
+}
+.QuizCard {
+
+}
+.underConstructionRow {
+	margin-bottom: 30px;
+}
+.underConstruction {
+	width: 100%;
+	display: inline-block;
+	margin: 0 0 30px 20vw;
+	font-size: 36px;
+}
+.subRow {
+	display: inline-flex;
+}
+.workingIcon {
+	height: 108px;
+	margin: 20px;
+	display: inline-table;
+}
+
+.march {
+	margin-top: 40px;
+	font-size: 24px;
+	display: inline-table;
+	font-family: "Oswald"
+}
+
+
+.button {
+	display: inline-table;
+	margin: 12px;
+	padding: 8px;
+	border: 1px solid gray;
+	border-radius: 3px;
+	font-size: 24px;
+	box-shadow: 3px 7px 24px 2px lightgray;
+}
+.button:hover {
+	background: #4a6670;
+	color: white;
+	cursor: pointer;
+	box-shadow: none;
+}
+
+.block {
+	display: inline-block;
+	margin-right: 10px;
+}
+
+.box {
+	min-width: 40px;
+	height: 40px;
+	border-radius: 6px;
+	font-size: 28px;
+	color: white;
+	background-color: gray;
+	display: inline-block;
+	margin: 10px;
+	padding: 10px;
+	border: 2px solid black;
+}
+.box:nth-of-type(3) {
+	background-color: #668f80;
+}
+.databox {
+	border-radius: 6px;
+	font-size: 14px;
+	color: gray;
+	background-color: white;
+	display: inline-block;
+	margin: 10px;
+	padding: 10px;
+	border: 2px solid gray;
+	display: inline-table;
+}

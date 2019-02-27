@@ -1,0 +1,25 @@
+.pageNotFound {
+	padding: 64px;
+}
+
+.exclamation {
+	font-family: "Poiret One", sans-serif;
+	color: gray;
+	font-size: 84px;
+	margin: 20px;
+	display: block;	
+}
+
+.divider {
+	height: 4px;
+	width: 500px;
+	margin: 30px;
+	background-color: pink;
+}
+
+.subheader {
+	font-family: "Nunito Sans", sans-serif;
+	color: darkgray;
+	font-size: 28px;
+	margin: 20px;
+}
