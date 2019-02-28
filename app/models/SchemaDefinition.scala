@@ -74,7 +74,6 @@ object SchemaDefinition {
           Some("The prefs of the user."),
           resolve = _.value.prefs)
       ))
-    ))
 
   val ID = Argument("id", StringType, description = "id of the character")
   val IdentificationNumber = Argument("id", IntType, description = "the user's id")
