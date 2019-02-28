@@ -5,22 +5,15 @@ import play.api.libs.json._
 import play.api.mvc._
 import play.api.Configuration
 import play.api.db.Database
-import anorm._
-import anorm.SqlParser.{get, str}
 import java.sql.Connection
 import scala.concurrent.ExecutionContext.Implicits.global
 
+import java.util.Date
+import play.api.db.DBApi
+import anorm._
+import anorm.SqlParser.{get, str, scalar}
+import scala.concurrent.Future
 
-object Episode extends Enumeration {
-  val NEWHOPE, EMPIRE, JEDI = Value
-}
-
-trait Character {
-  def id: String
-  def name: Option[String]
-  def friends: List[String]
-  def appearsIn: List[Episode.Value]
-}
 
 case class User(
   id: Int,
@@ -32,6 +25,11 @@ case class User(
   prefs: Option[String],
 )
 
+object User {
+  implicit def toParameters: ToParameterList[User] =
+    Macro.toParameters[User]
+}
+
 case class Flashcard(
   id: Int,
   question: String,
@@ -41,144 +39,102 @@ case class Flashcard(
   flashcards_id_fkey: Option[Int],
 )
 
-// object User extends Magic[User]
-// object Flashcard extends Magic[Flashcard]
+object Flashcard {
+  implicit def toParameters: ToParameterList[Flashcard] =
+    Macro.toParameters[Flashcard]
+}
 
-case class Human(
-  id: String,
-  name: Option[String],
-  friends: List[String],
-  appearsIn: List[Episode.Value],
-  homePlanet: Option[String]) extends Character
+@javax.inject.Singleton
+class QuizzitudeRepository @Inject()(dbapi: DBApi, companyRepository: CompanyRepository)(implicit ec: DatabaseExecutionContext) {   //// OPTIONALLY inject other repository
+  import models.QuizzitudeRepository._  
 
-case class Droid(
-  id: String,
-  name: Option[String],
-  friends: List[String],
-  appearsIn: List[Episode.Value],
-  primaryFunction: Option[String]) extends Character
+  private val db = dbapi.database("default")
 
-// def User(id: Int): Option[User] = {
-//   val query = SQL("select * from Users").as( str("firstName") ~< int("id") * )
-//   return query.execute()
-// }
-
-// @Singleton
-// class DatabseConnection @Inject() (database: Database, config: Configuration) {
-//   def startConn: Unit = {
-
-//   }
-// }
-
-class DatabaseQuizzitude {
-  import models.DatabaseQuizzitude._
-
-  def getHero(episode: Option[Episode.Value]) =
-    episode flatMap (_ ⇒ getHuman("1000")) getOrElse droids.last
-
-  def getHuman(id: String): Option[Human] = humans.find(c ⇒ c.id == id)
-
-  def getDroid(id: String): Option[Droid] = droids.find(c ⇒ c.id == id)
-
-  // def getFlashcards(id: String): List[AnyRef] = 
-
-  def getUser(id: Int, connection: Connection): User = {
-    // Country.update(Country(Id("FRA"), "France", 59225700, Some("Nicolas S."))) <–– Magic[Country]
-
-    val query: Option[Any] = SQL("Select * from Users").execute()
-        // .as( str("firstName") ~< int("id") * )
-
-      // SQL("SELECT * FROM Users WHERE id = {i}").
-      //   on("id" -> "id").as(patternParser.*)
-
-    println(query)
-
-
-    println("in the getUser method")
-
-    User(
-      id = 2890,
-      firstName = "Luke Skywalker",
-      lastName = Some(""),
-      username = Some(""),
-      email = Some(""),
-      theme = Some(""),
-      prefs = Some("")
-    )
+/////////////////////
+//// parsers   /////
+///////////////////
+  /**
+   * Parse from a ResultSet
+   */
+  private val simpleUser = {
+    get[Option[Int]]("user.id") ~
+      get[String]("user.firstName") ~
+      get[String]("user.lastName") ~
+      get[String]("user.username") ~
+      get[String]("user.email") ~
+      get[String]("user.theme") ~
+      get[String]("user.prefs") map {
+      case id ~ firstName ~ lastName ~ username ~ email ~ theme ~ prefs =>
+        User(id, firstName, lastName, username, email, theme, prefs)
+    }
   }
 
-  // def getUsers(u: U): Any = {
-  //   import play.api.db.Database
+  private val simpleFlashcard = {
+    get[Option[Int]]("flashcard.id") ~
+      get[String]("flashcard.question") ~
+      get[String]("flashcard.answer") ~
+      get[String]("flashcard.category") ~
+      get[String]("flashcard.assessmentMethod") ~
+      get[String]("flashcard.flashcards_id_fkey") map {
+      case id ~ question ~ answer ~ category ~ assessmentMethod ~ flashcards_id_fkey =>
+        User(id, question, answer, category, assessmentMethod, flashcards_id_fkey)
+    }
+  }
 
-  //   println("––>>>> made it db getUsers in Requests !")
 
-  //   val conn = Database.getConnection()
+/////////////////////////
+//// CRUD methods   ////
+///////////////////////
 
-  //   try {
-  //     val stmt = conn.createStatement
+  def getFlashcardsByUser(id: Int): Future[List[Flashcard]] = Future {
+    db.withConnection { implicit connection => 
+      SQL("""
+        select * from flashcards
+        where flashcards_id_fkey = {id}
+      """).as(simpleFlashcard)
+    }
+  }
 
-  //     val rs = stmt.executeQuery("SELECT * FROM users")
+  def getFlashcard(id: Int): Future[Flashcard] = Future {
+    db.withConnection { implicit connection => 
+      SQL(""" 
+        select from flashcards
+        where id = {id}
+      """)
+    }
+  }
 
-  //     println(rs)
+  def insertFlashcard(flashcard: Flashcard): Future[Option[Long]] = Future {
+    db.withConnection { implicit connection =>
+      SQL("""
+        insert into flashcard values (
+          (select next value for flashcard_seq),
+          {name}, {introduced}, {discontinued}, {companyId}
+        )
+      """).bind(flashcard).executeInsert()
+    }
+  }
 
-  //     while (rs.next) {
-  //        println(rs)
-  //     }
+  def updateFlashcard(id: Long, flashcard: Flashcard) = Future {
+    db.withConnection { implicit connection =>
+      SQL("""
+        update flashcard set name = {name}, introduced = {introduced}, 
+          discontinued = {discontinued}, company_id = {companyId}
+        where id = {id}
+      """).bind(flashcard.copy(id = Some(id)/* ensure */)).executeUpdate()
+      // case class binding using ToParameterList,
+      // note using SQL(..) but not SQL.. interpolation
+    }
+  }
 
-  //     return "SOMe thing comoing BAAK"
-  //   } finally {
-  //     conn.close()
-  //   }
+  def deleteFlashcard(id: Int) = Future {
+    db.withConnection { implicit connection => 
+      SQL(""" 
+        DELETE from flashcards
+        where id = {id}
+      """).executeUpdate()
+    }
+  }
 
-  //}
 }
 
-object DatabaseQuizzitude {
-  val humans = List(
-    Human(
-      id = "1000",
-      name = Some("Luke Skywalker"),
-      friends = List("1002", "1003", "2000", "2001"),
-      appearsIn = List(Episode.NEWHOPE, Episode.EMPIRE, Episode.JEDI),
-      homePlanet = Some("Tatooine")),
-    Human(
-      id = "1001",
-      name = Some("Darth Vader"),
-      friends = List("1004"),
-      appearsIn = List(Episode.NEWHOPE, Episode.EMPIRE, Episode.JEDI),
-      homePlanet = Some("Tatooine")),
-    Human(
-      id = "1002",
-      name = Some("Han Solo"),
-      friends = List("1000", "1003", "2001"),
-      appearsIn = List(Episode.NEWHOPE, Episode.EMPIRE, Episode.JEDI),
-      homePlanet = None),
-    Human(
-      id = "1003",
-      name = Some("Leia Organa"),
-      friends = List("1000", "1002", "2000", "2001"),
-      appearsIn = List(Episode.NEWHOPE, Episode.EMPIRE, Episode.JEDI),
-      homePlanet = Some("Alderaan")),
-    Human(
-      id = "1004",
-      name = Some("Wilhuff Tarkin"),
-      friends = List("1001"),
-      appearsIn = List(Episode.NEWHOPE, Episode.EMPIRE, Episode.JEDI),
-      homePlanet = None)
-  )
-
-  val droids = List(
-    Droid(
-      id = "2000",
-      name = Some("C-3PO"),
-      friends = List("1000", "1002", "1003", "2001"),
-      appearsIn = List(Episode.NEWHOPE, Episode.EMPIRE, Episode.JEDI),
-      primaryFunction = Some("Protocol")),
-    Droid(
-      id = "2001",
-      name = Some("R2-D2"),
-      friends = List("1000", "1002", "1003"),
-      appearsIn = List(Episode.NEWHOPE, Episode.EMPIRE, Episode.JEDI),
-      primaryFunction = Some("Astromech"))
-  )
-}

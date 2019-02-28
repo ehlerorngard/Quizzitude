@@ -5,27 +5,18 @@ import akka.actor.ActorSystem
 import play.api.libs.json._
 import play.api.mvc._
 import play.api.Configuration
-// import play.api.db.Database
-// import play.api.db.DBApi
 import sangria.execution._
 import sangria.parser.{QueryParser, SyntaxError}
 import sangria.marshalling.playJson._
-import models.{DatabaseQuizzitude, SchemaDefinition}
+import models.{QuizzitudeRepository, SchemaDefinition}
 import sangria.execution.deferred.DeferredResolver
 import sangria.renderer.SchemaRenderer
 import sangria.slowlog.SlowLog
-
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
-
 import scala.concurrent.ExecutionContext.Implicits.global
-
-// import play.api.ApplicationLoader.Context
-// import play.api.BuiltInComponentsFromContext
 import play.api.db.{Database, DBComponents, HikariCPComponents, DBApi}
-// import play.api.db.evolutions.EvolutionsComponents
-// import play.api.routing.Router
-// import play.filters.HttpFiltersComponents
+
 
 class Application @Inject() (system: ActorSystem, config: Configuration, database: Database) 
   extends InjectedController  {
@@ -33,24 +24,7 @@ class Application @Inject() (system: ActorSystem, config: Configuration, databas
 
   def db = Action {
     println("made it db Action !! ! !")
-    var out = ""
-    val conn = database.getConnection()
-    // val dbase = database.database("default")
-    try {
-      val stmt = conn.createStatement
-
-      stmt.executeUpdate("CREATE TABLE IF NOT EXISTS sticks (stick timestamp)")
-      stmt.executeUpdate("INSERT INTO sticks VALUES (now())")
-
-      val rs = stmt.executeQuery("SELECT stick FROM sticks")
-
-      while (rs.next) {
-        out += "Read from DB: " + rs.getTimestamp("stick") + "\n"
-      }
-    } finally {
-      conn.close()
-    }
-    Ok(out)
+    Ok("returned")
   }
 
 
@@ -77,16 +51,16 @@ class Application @Inject() (system: ActorSystem, config: Configuration, databas
   private def executeQuery(query: String, variables: Option[JsObject], operation: Option[String], tracing: Boolean) =
     QueryParser.parse(query) match {
 
-      // query parsed successfully, time to execute it!
+      // query parsed successfully: execute it
       case Success(queryAst) ⇒
-        Executor.execute(SchemaDefinition.FlashcardsSchema, queryAst, new DatabaseQuizzitude,
+        Executor.execute(SchemaDefinition.QuizzitudeSchema, queryAst, new QuizzitudeRepository,
             operationName = operation,
             variables = variables getOrElse Json.obj(),
-            deferredResolver = DeferredResolver.fetchers(SchemaDefinition.characters),
+            deferredResolver = DeferredResolver.fetchers(SchemaDefinition.flashcards),
             exceptionHandler = exceptionHandler,
             queryReducers = List(
-              QueryReducer.rejectMaxDepth[DatabaseQuizzitude](15),
-              QueryReducer.rejectComplexQueries[DatabaseQuizzitude](4000, (_, _) ⇒ TooComplexQueryError)),
+              QueryReducer.rejectMaxDepth[QuizzitudeRepository](15),
+              QueryReducer.rejectComplexQueries[QuizzitudeRepository](4000, (_, _) ⇒ TooComplexQueryError)),
             middleware = if (tracing) SlowLog.apolloTracing :: Nil else Nil)
           .map(Ok(_))
           .recover {
@@ -109,7 +83,7 @@ class Application @Inject() (system: ActorSystem, config: Configuration, databas
   def isTracingEnabled(request: Request[_]) = request.headers.get("X-Apollo-Tracing").isDefined
 
   def renderSchema = Action {
-    Ok(SchemaRenderer.renderSchema(SchemaDefinition.FlashcardsSchema))
+    Ok(SchemaRenderer.renderSchema(SchemaDefinition.QuizzitudeSchema))
   }
 
   lazy val exceptionHandler = ExceptionHandler {
