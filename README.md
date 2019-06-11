@@ -15,14 +15,5 @@ This is a quiz app that allows users to quiz themselves with their own custom qu
 * Redux
 
 
-### Local usage
-```bash
-$ git clone https://github.com/ehlerorngard/Quizzitude.git
-$ cd Quizzitude
-$ sbt run
-```
 
-... wait (it'll take a minute...)
-then [http://localhost:9000](http://localhost:9000) should open automatically in your browser.
-
-The prerequisites are [sbt](http://www.scala-sbt.org/download.html), [npm](https://www.npmjs.com/get-npm), [postgres](https://www.postgresql.org/download/), and [Java 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html).
+The prerequisites for running locally are [sbt](http://www.scala-sbt.org/download.html), [npm](https://www.npmjs.com/get-npm), [postgres](https://www.postgresql.org/download/), and [Java 8](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html).
